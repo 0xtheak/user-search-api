@@ -26,6 +26,8 @@ def fetch_user_data_from_api(first_name):
         users.append(user)
     return users
 
+
+# initialize database
 def initialize_database():
     connection = sqlite3.connect('users.db')
     with open('schema.sql') as f:
@@ -33,23 +35,31 @@ def initialize_database():
     connection.commit()
     connection.close()
 
+# fetch data from database
+def fetch_user_data_from_database(first_name):
+    # database connection
+    conn = sqlite3.connect('users.db')
+    conn.row_factory = sqlite3.Row
+
+    # select user data query
+    query = "SELECT * FROM users WHERE first_name LIKE ? "
+    # for retreival similar first name
+    partial_first_name = f"{first_name}%"
+    # execute the sql query
+    users = conn.execute(query, (partial_first_name, )).fetchall()
+
+    # close database connection
+    conn.close()
+    return users;
+
 @app.route('/api/users', methods=['GET'])
 def index():
     try:
         first_name = request.args.get('first_name')
         if not first_name:
             return jsonify({"error": "Missing 'first_name' parameter"}), 400
-        
-        # database connection
-        conn = sqlite3.connect('users.db')
-        conn.row_factory = sqlite3.Row
 
-        # select user data query
-        query = "SELECT * FROM users WHERE first_name LIKE ?"
-        # for retreival similar first name
-        partial_first_name = f"%{first_name}%"
-        # execute the sql query
-        users = conn.execute(query, (partial_first_name,)).fetchall()
+        users = fetch_user_data_from_database(first_name)
 
         # retrieve data from the api, if not present in localdabase
         if len(users) == 0:
@@ -60,25 +70,31 @@ def index():
                 
                 # if there is not data returned from the api, send this msg to client 
                 if len(fetched_users)==0:
-                    conn.close()
                     return jsonify({"msg" : "Data not available for this username"})
+
+                # database connection
+                conn = sqlite3.connect('users.db')
+                conn.row_factory = sqlite3.Row
 
                 # insert data query
                 insert_query = "INSERT INTO users (first_name, last_name, age, gender, email, phone, birth_date) VALUES (?, ?, ?, ?, ?, ?, ?)"
                 for user in fetched_users:
                     check_user_query = "SELECT * FROM users WHERE first_name = ?"
-                    user_in_database = conn.execute(query, (user['first_name'],)).fetchall()
+                    user_in_database = conn.execute(check_user_query, (user['first_name'],)).fetchall()
+
                     
                     # insert only those data whose not present in database
                     if len(user_in_database)==0:
                         conn.execute(insert_query, (user['first_name'], user['last_name'], user['age'], user['gender'], user['email'], user['phone'], user['birth_date']))
-                    
-                    cache[user['first_name']] = fetched_users
-                conn.commit()
-                users = fetched_users
+                        conn.commit()
+                
+                # close database connection
+                conn.close()
+                users = fetch_user_data_from_database(first_name)
+                # store in the cache
+                cache[first_name] = users
             
-        # close database connection
-        conn.close()
+        
         user_list = [dict(user) for user in users]
         return jsonify(user_list)
     except Exception as e:
