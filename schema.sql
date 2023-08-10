@@ -1,5 +1,3 @@
-
-
 --create table if the table is not exist in the database
 CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY,

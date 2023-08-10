@@ -4,7 +4,8 @@ import requests
 from cachetools import TTLCache
 
 app = Flask(__name__)
-cache = TTLCache(maxsize=100, ttl=300)  # Cache user data for 5 minutes
+# Cache user data for 5 minutes
+cache = TTLCache(maxsize=100, ttl=300)  
 
 # reterive data from the api, if not present in local database 
 def fetch_user_data_from_api(first_name):
@@ -38,33 +39,59 @@ def index():
         first_name = request.args.get('first_name')
         if not first_name:
             return jsonify({"error": "Missing 'first_name' parameter"}), 400
-
+        
+        # database connection
         conn = sqlite3.connect('users.db')
         conn.row_factory = sqlite3.Row
 
-        query = "SELECT * FROM users WHERE first_name = ?"
-        users = conn.execute(query, (first_name,)).fetchall()
+        # select user data query
+        query = "SELECT * FROM users WHERE first_name LIKE ?"
+        # for retreival similar first name
+        partial_first_name = f"%{first_name}%"
+        # execute the sql query
+        users = conn.execute(query, (partial_first_name,)).fetchall()
 
+        # retrieve data from the api, if not present in localdabase
         if len(users) == 0:
             if first_name in cache:
                 users = cache[first_name]
             else:
                 fetched_users = fetch_user_data_from_api(first_name)
+                
+                # if there is not data returned from the api, send this msg to client 
+                if len(fetched_users)==0:
+                    conn.close()
+                    return jsonify({"msg" : "Data not available for this username"})
+
+                # insert data query
                 insert_query = "INSERT INTO users (first_name, last_name, age, gender, email, phone, birth_date) VALUES (?, ?, ?, ?, ?, ?, ?)"
                 for user in fetched_users:
-                    conn.execute(insert_query, (user['first_name'], user['last_name'], user['age'], user['gender'], user['email'], user['phone'], user['birth_date']))
-
+                    check_user_query = "SELECT * FROM users WHERE first_name = ?"
+                    user_in_database = conn.execute(query, (user['first_name'],)).fetchall()
+                    
+                    # insert only those data whose not present in database
+                    if len(user_in_database)==0:
+                        conn.execute(insert_query, (user['first_name'], user['last_name'], user['age'], user['gender'], user['email'], user['phone'], user['birth_date']))
+                    
+                    cache[user['first_name']] = fetched_users
                 conn.commit()
-                cache[first_name] = fetched_users
                 users = fetched_users
-
+            
+        # close database connection
         conn.close()
-
         user_list = [dict(user) for user in users]
         return jsonify(user_list)
     except Exception as e:
-        return jsonify({"error": str(e)})
+        return jsonify({"error": "Internal Serverl Error"})
 
 if __name__ == '__main__':
+    # initialize the database
     initialize_database()
-    app.run()
+
+    # start the application
+    # for development
+    # app.run(debug=True, host="0.0.0.0", port="5000")
+
+    # for production
+    from waitress import serve
+    serve(app, host="0.0.0.0", port=5000)

@@ -2,3 +2,4 @@ sqlite3
 flask
 requests
 cachetools
+waitress

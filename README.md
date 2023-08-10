@@ -1,25 +1,21 @@
 # User Search API
 
-This is a Flask-based API that allows users to search for user data stored in an SQLite database. Users can search for users by various parameters such as first name, last name, age, gender, and more. If a user is not found in the database, the API can fetch the user data from an external API and insert it into the database for future queries.
+This is a Flask-based API that allows users to search for user data stored in an SQLite database. Users can search the stored users data by first name. If a user is not found in the database, then the API can fetch the user data from an external API and insert it into the database for future queries.
 
 ## Getting Started
 
-1. Clone the repository:
+Clone the repository:
 
-   git clone https://github.com/your-username/user-search-api.git
-   cd user-search-api
+    git clone https://github.com/0xtheak/user-search-api.git
+    cd user-search-api
 
-    Create a virtual environment and activate it:
-    
-    python -m venv venv
-    source venv/bin/activate  # On Windows: venv\Scripts\activate
 
-    Install the required dependencies:
+Install the required dependencies:
 
-    pip install -r requirements.txt
+    pip3 install -r requirements.txt
 
     Run the Flask application:
-    python app.py
+    python3 app.py
 
 The API will start running locally at http://localhost:5000.
 API Endpoints
@@ -41,7 +37,7 @@ Search for users with the first name "John":
 
     GET http://localhost:5000/api/users?first_name=John
 
-If a user with the specified first name is not found in the database, the API will fetch user data from an external API and insert it into the database for future queries.
+If a user with the specified first name is not found in the database, then the API will fetch user data from an external API and insert it into the database for future queries.
 
 Schema
 
